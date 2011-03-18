@@ -251,11 +251,11 @@ class Results(object):
         
         
     def __parse_file(self):
-        f = open(self.results_file_name, 'rb')
+        import json
+        import csv
+        f = csv.reader(open(self.results_file_name, 'rb'))
         resp_stats_list = []
-        for line in f:
-            fields = line.strip().split(',')
-            
+        for fields in f:
             request_num = int(fields[0])
             elapsed_time = float(fields[1])
             epoch_secs = int(fields[2])
@@ -265,20 +265,8 @@ class Results(object):
             
             self.uniq_user_group_names.add(user_group_name)
             
-            custom_timers = {}
-            timers_string = ''.join(fields[6:]).replace('{', '').replace('}', '')
-            splat = timers_string.split("'")[1:]
-            timers = []
-            vals = []
-            for x in splat:
-                if ':' in x:
-                    x = float(x.replace(': ', ''))
-                    vals.append(x)
-                else:
-                    timers.append(x)
-                    self.uniq_timer_names.add(x)
-            for timer, val in zip(timers, vals):
-                custom_timers[timer] = val
+            custom_timers = json.loads(fields[6])
+            self.uniq_timer_names.update(custom_timers.keys())
             
             r = ResponseStats(request_num, elapsed_time, epoch_secs, user_group_name, trans_time, error, custom_timers)
             

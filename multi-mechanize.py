@@ -287,7 +287,10 @@ class ResultsWriter(threading.Thread):
             sys.exit(1)    
     
     def run(self):
-        with open(self.output_dir + 'results.csv', 'w') as f:     
+        import csv
+        import json
+        with open(self.output_dir + 'results.csv', 'wb') as filestream:
+            f=csv.writer(filestream)
             while True:
                 try:
                     elapsed, epoch, self.user_group_name, scriptrun_time, error, custom_timers = self.queue.get(False)
@@ -295,8 +298,8 @@ class ResultsWriter(threading.Thread):
                     self.timer_count += len(custom_timers)
                     if error != '':
                         self.error_count += 1
-                    f.write('%i,%.3f,%i,%s,%f,%s,%s\n' % (self.trans_count, elapsed, epoch, self.user_group_name, scriptrun_time, error, repr(custom_timers)))
-                    f.flush()
+                    f.writerow((int(self.trans_count), elapsed, int(epoch), self.user_group_name, scriptrun_time, error, json.dumps(custom_timers)))
+                    filestream.flush()
                     if self.console_logging:
                         print '%i, %.3f, %i, %s, %.3f, %s, %s' % (self.trans_count, elapsed, epoch, self.user_group_name, scriptrun_time, error, repr(custom_timers))
                 except Queue.Empty:
