@@ -135,8 +135,10 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
         for resp_stats in results.resp_stats_list:
             try:
                 val = resp_stats.custom_timers[timer_name]
-                custom_timer_points.append((resp_stats.elapsed_time, val)) 
-                custom_timer_vals.append(val)
+                if not isinstance(val, (list, tuple)):
+                    val=[val]
+                custom_timer_points.extend([(resp_stats.elapsed_time, v) for v in val])
+                custom_timer_vals.extend(val)
             except KeyError:
                 pass
         graph.resp_graph_raw(custom_timer_points, timer_name + '_response_times.png', results_dir)
