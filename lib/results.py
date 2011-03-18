@@ -9,12 +9,58 @@
 import time
 from collections import defaultdict
 import graph
-import reportwriter
 
+def timer_table_vals(timer_points, interval_secs):
+    timer_vals=[j for i,j in timer_points]
+    graphs={}
+    graphs['avg_resptime'] = {}  # {intervalstart: avg_resptime}
+    graphs['pct_80_resptime'] = {}  # {intervalstart: 80pct_resptime}
+    graphs['pct_90_resptime'] = {}  # {intervalstart: 90pct_resptime}
 
+    summary=dict(count=len(timer_vals),
+                 min=min(timer_vals), 
+                 avg=average(timer_vals),
+                 pct_80=percentile(timer_vals, 80),
+                 pct_90=percentile(timer_vals, 90),
+                 pct_95=percentile(timer_vals, 95),
+                 max=max(timer_vals),
+                 stdev=standard_dev(timer_vals))
+
+    splat_series = split_series(timer_points, interval_secs)
+    timer_table=[]
+    for i, bucket in enumerate(splat_series):
+        interval_start = int((i + 1) * interval_secs)
+        cnt = len(bucket)
+        if cnt == 0:
+            row=dict(interval=i+1, count=0, rate=0, min='N/A', avg='N/A',pct_80='N/A',pct_90='N/A',pct_95='N/A',max='N/A',stdev='N/A')
+        else:
+            row=dict()
+            row['interval'] = i+1
+            row['count'] = cnt
+            row['rate'] = cnt / float(interval_secs)
+            row['min'] = min(bucket)
+            row['avg'] = average(bucket)
+            row['pct_80'] = percentile(bucket, 80)
+            row['pct_90'] = percentile(bucket, 90)
+            row['pct_95'] = percentile(bucket, 95)
+            row['max'] = max(bucket)
+            row['stdev'] = standard_dev(bucket)
+        timer_table.append(row)
+
+        # graph data
+        graphs['avg_resptime'][interval_start] = row['avg']
+        graphs['pct_80_resptime'][interval_start] = row['pct_80']
+        graphs['pct_90_resptime'][interval_start] = row['pct_90']
+
+    return summary, timer_table, graphs    
 
 def output_results(results_dir, results_file, run_time, rampup, ts_interval, user_group_configs=None):
-    report = reportwriter.Report(results_dir)
+    from jinja2 import Template
+    from jinja2 import Environment, FileSystemLoader
+    # change this to PackageLoader when we get an installable package
+    env = Environment(loader=FileSystemLoader('lib/templates'))
+    template = env.get_template('results_template.html')
+    template_vars=dict()
     
     results = Results(results_dir + results_file, run_time)
     
@@ -25,213 +71,72 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
     print 'test finish: %s' % results.finish_datetime
     print ''
     
-    report.write_line('<h1>Performance Results Report</h1>')
+    template_vars['total_transactions']=results.total_transactions
+    template_vars['total_errors']=results.total_errors
+    template_vars['run_time']=run_time
+    template_vars['rampup']=rampup
+    template_vars['test_start']=results.start_datetime
+    template_vars['test_finish']=results.finish_datetime
+    template_vars['timeseries_interval']=ts_interval
+    template_vars['user_group_configs']=user_group_configs
     
-    report.write_line('<h2>Summary</h2>')
-    
-    report.write_line('<div class="summary">')
-    report.write_line('<b>transactions:</b> %d<br />' % results.total_transactions)
-    report.write_line('<b>errors:</b> %d<br />' % results.total_errors)
-    report.write_line('<b>run time:</b> %d secs<br />' % run_time)
-    report.write_line('<b>rampup:</b> %d secs<br /><br />' % rampup)
-    report.write_line('<b>test start:</b> %s<br />' % results.start_datetime)
-    report.write_line('<b>test finish:</b> %s<br /><br />' % results.finish_datetime)
-    report.write_line('<b>time-series interval:</b> %s secs<br /><br /><br />' % ts_interval)
-    if user_group_configs:
-        report.write_line('<b>workload configuration:</b><br /><br />')
-        report.write_line('<table>')
-        report.write_line('<tr><th>group name</th><th>threads</th><th>script name</th></tr>')
-        for user_group_config in user_group_configs:
-            report.write_line('<tr><td>%s</td><td>%d</td><td>%s</td></tr>' % 
-                (user_group_config.name, user_group_config.num_threads, user_group_config.script_file))
-        report.write_line('</table>')
-    report.write_line('</div>')
-    
-    report.write_line('<h2>All Transactions</h2>')
-    
-    # all transactions - response times
-    trans_timer_points = []  # [elapsed, timervalue]
-    trans_timer_vals = []
+    # Make the "Transactions" timer just another custom timer
+    template_vars['timers']={}
+    template_vars['graph_filenames']={}
+    results.uniq_timer_names.add('transactions')
     for resp_stats in results.resp_stats_list:
-        t = (resp_stats.elapsed_time, resp_stats.trans_time)
-        trans_timer_points.append(t)
-        trans_timer_vals.append(resp_stats.trans_time)
-    graph.resp_graph_raw(trans_timer_points, 'All_Transactions_response_times.png', results_dir)
-    
-    report.write_line('<h3>Transaction Response Summary (secs)</h3>')
-    report.write_line('<table>')
-    report.write_line('<tr><th>count</th><th>min</th><th>avg</th><th>80pct</th><th>90pct</th><th>95pct</th><th>max</th><th>stdev</th></tr>') 
-    report.write_line('<tr><td>%i</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>'  % (
-        results.total_transactions, 
-        min(trans_timer_vals), 
-        average(trans_timer_vals), 
-        percentile(trans_timer_vals, 80), 
-        percentile(trans_timer_vals, 90), 
-        percentile(trans_timer_vals, 95), 
-        max(trans_timer_vals),
-        standard_dev(trans_timer_vals), 
-    ))
-    report.write_line('</table>')
-    
-    
-    # all transactions - interval details
-    avg_resptime_points = {}  # {intervalnumber: avg_resptime}
-    percentile_80_resptime_points = {}  # {intervalnumber: 80pct_resptime}
-    percentile_90_resptime_points = {}  # {intervalnumber: 90pct_resptime}
-    interval_secs = ts_interval
-    splat_series = split_series(trans_timer_points, interval_secs)
-    report.write_line('<h3>Interval Details (secs)</h3>')
-    report.write_line('<table>')
-    report.write_line('<tr><th>interval</th><th>count</th><th>rate</th><th>min</th><th>avg</th><th>80pct</th><th>90pct</th><th>95pct</th><th>max</th><th>stdev</th></tr>') 
-    for i, bucket in enumerate(splat_series):
-        interval_start = int((i + 1) * interval_secs)
-        cnt = len(bucket) 
+        resp_stats.custom_timers['transactions']=[(resp_stats.elapsed_time, resp_stats.trans_time)]
+
         
-        if cnt == 0:
-            report.write_line('<tr><td>%i</td><td>0</td><td>0</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>' % (i + 1))  
-        else:
-            rate = cnt / float(interval_secs)
-            mn = min(bucket)
-            avg = average(bucket)
-            pct_80 = percentile(bucket, 80)
-            pct_90 = percentile(bucket, 90)
-            pct_95 = percentile(bucket, 95)
-            mx = max(bucket)
-            stdev = standard_dev(bucket)
-            report.write_line('<tr><td>%i</td><td>%i</td><td>%.2f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>' % (i + 1, cnt, rate, mn, avg, pct_80, pct_90, pct_95, mx, stdev))
-
-            avg_resptime_points[interval_start] = avg
-            percentile_80_resptime_points[interval_start] = pct_80
-            percentile_90_resptime_points[interval_start] = pct_90
-
-    report.write_line('</table>') 
-    graph.resp_graph(avg_resptime_points, percentile_80_resptime_points, percentile_90_resptime_points, 'All_Transactions_response_times_intervals.png', results_dir)
-    
-    
-    report.write_line('<h3>Graphs</h3>')
-    report.write_line('<h4>Response Time: %s sec time-series</h4>' % ts_interval)
-    report.write_line('<img src="All_Transactions_response_times_intervals.png"></img>')     
-    report.write_line('<h4>Response Time: raw data (all points)</h4>')
-    report.write_line('<img src="All_Transactions_response_times.png"></img>') 
-    report.write_line('<h4>Throughput: 5 sec time-series</h4>')
-    report.write_line('<img src="All_Transactions_throughput.png"></img>')  
-    
-
-
-    # all transactions - throughput
-    throughput_points = {}  # {intervalnumber: numberofrequests}
-    interval_secs = 5.0
-    splat_series = split_series(trans_timer_points, interval_secs)
-    for i, bucket in enumerate(splat_series):
-        throughput_points[int((i + 1) * interval_secs)] = (len(bucket) / interval_secs)
-    graph.tp_graph(throughput_points, 'All_Transactions_throughput.png', results_dir)
-    
-        
-        
-    # custom timers
-    for timer_name in sorted(results.uniq_timer_names):
-        custom_timer_vals = []
-        custom_timer_points = []
+    for timer_string in sorted(results.uniq_timer_names):
+        timer_points = []  # [elapsed, timervalue]
         for resp_stats in results.resp_stats_list:
             try:
-                val = resp_stats.custom_timers[timer_name]
+                val = resp_stats.custom_timers[timer_string]
+                # the values in a custom timer can either be a single time 
+                # delta, a list of time deltas, or a list of 
+                # (elapsed time, time delta) tuples
                 if not isinstance(val, (list, tuple)):
-                    val=[val]
-                custom_timer_points.extend([(resp_stats.elapsed_time, v) for v in val])
-                custom_timer_vals.extend(val)
-            except KeyError:
+                    val=[(resp_stats.elapsed_time, val)]
+                elif not isinstance(val[0], (list, tuple)):
+                    val=[(resp_stats.elapsed_time, v) for v in val]
+                # now val is a list of (elapsed time, time delta)
+                timer_points.extend(val)
+            except (KeyError,IndexError):
                 pass
-        graph.resp_graph_raw(custom_timer_points, timer_name + '_response_times.png', results_dir)
-        
-        throughput_points = {}  # {intervalnumber: numberofrequests}
+
+        template_vars['timers'][timer_string]={}
+        template_vars['timers'][timer_string]['s'],template_vars['timers'][timer_string]['table'],graph_data=timer_table_vals(timer_points, ts_interval)
+
+        template_vars['graph_filenames'][timer_string]={}
+        template_vars['graph_filenames'][timer_string]['resptime']=timer_string+'_response_times_intervals.png'
+        template_vars['graph_filenames'][timer_string]['resptime_all']=timer_string+'_response_times.png'
+        template_vars['graph_filenames'][timer_string]['throughput']=timer_string+'_throughput.png'
+
+        graph.resp_graph(graph_data['avg_resptime'], 
+                         graph_data['pct_80_resptime'], 
+                         graph_data['pct_90_resptime'], 
+                         template_vars['graph_filenames'][timer_string]['resptime'], 
+                         results_dir)
+
+        graph.resp_graph_raw(timer_points, 
+                             template_vars['graph_filenames'][timer_string]['resptime_all'], 
+                             results_dir)
+
+
+        # all transactions - throughput
+        throughput_points = {}  # {intervalstart: numberofrequests}
         interval_secs = 5.0
-        splat_series = split_series(custom_timer_points, interval_secs)
+        splat_series = split_series(timer_points, interval_secs)
         for i, bucket in enumerate(splat_series):
             throughput_points[int((i + 1) * interval_secs)] = (len(bucket) / interval_secs)
-        graph.tp_graph(throughput_points, timer_name + '_throughput.png', results_dir)
-        
-        report.write_line('<hr />')
-        report.write_line('<h2>Custom Timer: %s</h2>' % timer_name)
-        
-        report.write_line('<h3>Timer Summary (secs)</h3>')
-        
-        report.write_line('<table>')
-        report.write_line('<tr><th>count</th><th>min</th><th>avg</th><th>80pct</th><th>90pct</th><th>95pct</th><th>max</th><th>stdev</th></tr>') 
-        report.write_line('<tr><td>%i</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>'  % (
-            len(custom_timer_vals), 
-            min(custom_timer_vals), 
-            average(custom_timer_vals), 
-            percentile(custom_timer_vals, 80), 
-            percentile(custom_timer_vals, 90), 
-            percentile(custom_timer_vals, 95), 
-            max(custom_timer_vals),
-            standard_dev(custom_timer_vals)
-        ))
-        report.write_line('</table>')
-    
-        
-        # custom timers - interval details
-        avg_resptime_points = {}  # {intervalnumber: avg_resptime}
-        percentile_80_resptime_points = {}  # {intervalnumber: 80pct_resptime}
-        percentile_90_resptime_points = {}  # {intervalnumber: 90pct_resptime}
-        interval_secs = ts_interval
-        splat_series = split_series(custom_timer_points, interval_secs)
-        report.write_line('<h3>Interval Details (secs)</h3>')
-        report.write_line('<table>')
-        report.write_line('<tr><th>interval</th><th>count</th><th>rate</th><th>min</th><th>avg</th><th>80pct</th><th>90pct</th><th>95pct</th><th>max</th><th>stdev</th></tr>') 
-        for i, bucket in enumerate(splat_series):
-            interval_start = int((i + 1) * interval_secs)
-            cnt = len(bucket) 
-            
-            if cnt == 0:
-                report.write_line('<tr><td>%i</td><td>0</td><td>0</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>' % (i + 1))  
-            else:
-                rate = cnt / float(interval_secs)
-                mn = min(bucket)
-                avg = average(bucket)
-                pct_80 = percentile(bucket, 80)
-                pct_90 = percentile(bucket, 90)
-                pct_95 = percentile(bucket, 95)
-                mx = max(bucket)
-                stdev = standard_dev(bucket)
+        graph.tp_graph(throughput_points, template_vars['graph_filenames'][timer_string]['throughput'], results_dir)
 
-                report.write_line('<tr><td>%i</td><td>%i</td><td>%.2f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>' % (i + 1, cnt, rate, mn, avg, pct_80, pct_90, pct_95, mx, stdev))
-                 
-                avg_resptime_points[interval_start] = avg
-                percentile_80_resptime_points[interval_start] = pct_80
-                percentile_90_resptime_points[interval_start] = pct_90
-        report.write_line('</table>') 
-        graph.resp_graph(avg_resptime_points, percentile_80_resptime_points, percentile_90_resptime_points, timer_name + '_response_times_intervals.png', results_dir)
-    
-        
-        report.write_line('<h3>Graphs</h3>')
-        report.write_line('<h4>Response Time: %s sec time-series</h4>' % ts_interval)
-        report.write_line('<img src="%s_response_times_intervals.png"></img>' % timer_name)
-        report.write_line('<h4>Response Time: raw data (all points)</h4>')        
-        report.write_line('<img src="%s_response_times.png"></img>' % timer_name)
-        report.write_line('<h4>Throughput: 5 sec time-series</h4>')
-        report.write_line('<img src="%s_throughput.png"></img>' % timer_name) 
-        
-    
-        
-    ## user group times
-    #for user_group_name in sorted(results.uniq_user_group_names):
-    #    ug_timer_vals = []
-    #    for resp_stats in results.resp_stats_list:
-    #        if resp_stats.user_group_name == user_group_name: 
-    #            ug_timer_vals.append(resp_stats.trans_time)
-    #    print user_group_name
-    #    print 'min: %.3f' % min(ug_timer_vals)
-    #    print 'avg: %.3f' % average(ug_timer_vals)
-    #    print '80pct: %.3f' % percentile(ug_timer_vals, 80)
-    #    print '90pct: %.3f' % percentile(ug_timer_vals, 90)
-    #    print '95pct: %.3f' % percentile(ug_timer_vals, 95)
-    #    print 'max: %.3f' % max(ug_timer_vals)
-    #    print ''        
-    
-    report.write_line('<hr />')
-    report.write_closing_html()
 
+
+    import os
+    with open(os.path.join(results_dir, 'results.html'), 'w') as f:
+        f.write(template.render(**template_vars))
 
 
 class Results(object):
