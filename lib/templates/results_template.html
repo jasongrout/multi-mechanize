@@ -14,28 +14,24 @@
             padding: 5px;
         }
         h1 {
-            font-size: 16px;
             background: #FF9933;
             margin-bottom: 0;
             padding-left: 5px;
             padding-top: 2px;
         }
         h2 {
-            font-size: 13px;
             background: #C0C0C0;
             padding-left: 5px;
             margin-top: 2em;
             margin-bottom: .75em;
         }
         h3 {
-            font-size: 12px;
-            background: #EEEEEE;
+           background: #EEEEEE;
             padding-left: 5px;
             margin-bottom: 0.5em;
         }
         h4 {
-            font-size: 11px;
-            padding-left: 20px;
+           padding-left: 20px;
             margin-bottom: 0;
         }
         p {
@@ -119,15 +115,10 @@
 
   
   <h3>Graphs: {{timeseries_interval}} sec time-series</h3>
-  <!-- <h4>Response Time: {{timeseries_interval}} sec time-series</h4>-->
-    <img src={{graph_filenames[timer].resptime}}></img>     
-<!--    <h4>Response Time: raw data (all points)</h4>
-    <img src={{graph_filenames[timer].resptime_all}}></img>
-    <h4>Throughput: 5 sec time-series</h4>
-    <img src={{graph_filenames[timer].throughput}}></img> -->
-  
+   <img src={{graph_filenames[timer].resptime}}></img>     
 
-<!-- <h3>Interval Details (secs)</h3>
+<!-- TODO: Make this a collapsible table
+<h3>Interval Details (secs)</h3>
 <table>
   <tr>
     <th>interval</th>
