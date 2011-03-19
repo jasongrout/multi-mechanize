@@ -14,7 +14,7 @@ from itertools import groupby
 
 def timer_table_vals(timer, interval_secs):
     timer=np.asarray(timer, dtype=float)
-    timer_vals=timer[:,1]
+    timer_vals=timer[:,1].copy() # must make a copy so we don't sort timer
     timer_vals.sort()
     n=len(timer_vals)
     graphs={}
