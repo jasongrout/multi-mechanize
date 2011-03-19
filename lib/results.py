@@ -223,4 +223,4 @@ def group_series(points, interval):
             for key,values in groupby(p,group_function)]
     
 if __name__ == '__main__':
-    output_results('./', 'results.csv', 60, 30, 10)
+    output_results('./', 'results.csv', 120, 1, 1)
