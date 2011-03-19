@@ -29,7 +29,7 @@ def timer_table_vals(timer, interval_secs):
     graphs={}
     graphs['pct_50_resptime'] = {}
     graphs['pct_80_resptime'] = {}  
-    graphs['pct_90_resptime'] = {}  
+    graphs['pct_95_resptime'] = {}  
 
     summary=dict(count=n,
                  min=timer_vals[0],
@@ -67,9 +67,9 @@ def timer_table_vals(timer, interval_secs):
         # graph data
         graphs['pct_50_resptime'][i] = row['pct_50']
         graphs['pct_80_resptime'][i] = row['pct_80']
-        graphs['pct_90_resptime'][i] = row['pct_90']
+        graphs['pct_95_resptime'][i] = row['pct_95']
 
-    return summary, timer_table, graphs    
+    return summary, timer_table, graphs, splat_series   
 
 def output_results(results_dir, results_file, run_time, rampup, ts_interval, user_group_configs=[]):
     from jinja2 import Template
@@ -124,28 +124,27 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
         timer_points=np.asarray(timer_points,dtype=float)
 
         template_vars['timers'][timer_string]={}
-        template_vars['timers'][timer_string]['s'],template_vars['timers'][timer_string]['table'],graph_data=timer_table_vals(timer_points, ts_interval)
+        template_vars['timers'][timer_string]['s'],template_vars['timers'][timer_string]['table'],graph_data, splat_series=timer_table_vals(timer_points, ts_interval)
 
         template_vars['graph_filenames'][timer_string]={}
         template_vars['graph_filenames'][timer_string]['resptime']=timer_string+'_response_times_intervals.png'
         template_vars['graph_filenames'][timer_string]['resptime_all']=timer_string+'_response_times.png'
         template_vars['graph_filenames'][timer_string]['throughput']=timer_string+'_throughput.png'
 
-        graph.resp_graph(graph_data['pct_50_resptime'], 
-                         graph_data['pct_80_resptime'], 
-                         graph_data['pct_90_resptime'], 
-                         template_vars['graph_filenames'][timer_string]['resptime'], 
-                         results_dir)
-
-        graph.resp_graph_raw(timer_points, 
-                             template_vars['graph_filenames'][timer_string]['resptime_all'], 
-                             results_dir)
-
         interval_secs=5.0
         bins=np.arange(0,run_time+interval_secs, interval_secs)
         hist,bins=np.histogram(timer_points[:,0],bins)
         throughput_points=dict(zip(bins,hist/interval_secs))
-        graph.tp_graph(throughput_points, template_vars['graph_filenames'][timer_string]['throughput'], results_dir)
+
+        graph.resp_graph((('95%', graph_data['pct_95_resptime'],),
+                          ('80%', graph_data['pct_80_resptime']), 
+                          ('Median',graph_data['pct_50_resptime'])), 
+                         ('All timers', timer_points),
+                         ('Throughput', throughput_points),
+                         splat_series,
+                         template_vars['graph_filenames'][timer_string]['resptime'], 
+                         results_dir)
+
 
 
 
