@@ -298,7 +298,7 @@ class ResultsWriter(threading.Thread):
                     self.timer_count += len(custom_timers)
                     if error != '':
                         self.error_count += 1
-                    f.writerow((int(self.trans_count), elapsed, int(epoch), self.user_group_name, scriptrun_time, error, json.dumps(custom_timers)))
+                    f.writerow((int(self.trans_count), elapsed, epoch, self.user_group_name, scriptrun_time, error, json.dumps(custom_timers)))
                     filestream.flush()
                     if self.console_logging:
                         print '%i, %.3f, %i, %s, %.3f, %s, %s' % (self.trans_count, elapsed, epoch, self.user_group_name, scriptrun_time, error, repr(custom_timers))
