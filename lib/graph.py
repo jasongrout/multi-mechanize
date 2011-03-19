@@ -17,16 +17,16 @@ except ImportError:
     print 'ERROR: can not import Matplotlib. install Matplotlib to generate graphs'
     
 
-def resp_graph(lines, points, line_below, boxplots, image_name, dir='./'):
+def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./'):
     fig = figure(figsize=(8, 12))  # image dimensions
+    fig.suptitle('Timer: '+timer)
     ax1 = fig.add_subplot(311)
     ax2=fig.add_subplot(312,sharex=ax1)
     ax3=fig.add_subplot(313,sharex=ax1)
 
     ax=ax1
-    ax.set_xlim(xmin=0)
-    ax.set_ylim(ymin=0)
-    ax.set_xlabel('Elapsed Time In Test (secs)', size='x-small')
+    ax.set_title('Summary of '+timer,size='small')
+    #ax.set_xlabel('Elapsed Time In Test (secs)', size='x-small')
     ax.set_ylabel('Response Time (secs)' , size='x-small')
     ax.grid(True, color='#666666')
     ax.tick_params(labelsize='x-small')
@@ -48,9 +48,8 @@ def resp_graph(lines, points, line_below, boxplots, image_name, dir='./'):
 
 
     ax=ax2
-    ax.set_xlim(xmin=0)
-    ax.set_ylim(ymin=0)
-    ax.set_xlabel('Elapsed Time In Test (secs)', size='x-small')
+    ax.set_title('Detail of '+timer,size='small')
+    #ax.set_xlabel('Elapsed Time In Test (secs)', size='x-small')
     ax.set_ylabel('Response Time (secs)' , size='x-small')
     ax.grid(True, color='#666666')
     ax.tick_params(labelsize='x-small')
@@ -70,12 +69,11 @@ def resp_graph(lines, points, line_below, boxplots, image_name, dir='./'):
 
 
     ax=ax3
+    ax.set_title('Throughput of '+timer,size='small')
     ax.set_xlabel('Elapsed Time In Test (secs)', size='x-small')
     ax.set_ylabel('Timers Per Second (count)' , size='x-small')
     ax.grid(True, color='#666666')
     ax.tick_params(labelsize='x-small')
-    ax.set_xlim(xmin=0)
-    ax.set_ylim(ymin=0)
 
     throughput_label, throughputs_dict=line_below
     x_seq = sorted(throughputs_dict.keys())
