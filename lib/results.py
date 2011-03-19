@@ -63,7 +63,7 @@ def timer_table_vals(timer, interval_secs):
 
     return summary, timer_table, graphs    
 
-def output_results(results_dir, results_file, run_time, rampup, ts_interval, user_group_configs=None):
+def output_results(results_dir, results_file, run_time, rampup, ts_interval, user_group_configs=[]):
     from jinja2 import Template
     from jinja2 import Environment, FileSystemLoader
     # change this to PackageLoader when we get an installable package
