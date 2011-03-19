@@ -23,7 +23,6 @@ except ImportError:
 
 
 def timer_table_vals(timer, interval_secs):
-    timer=np.asarray(timer, dtype=float)
     timer_vals=timer[:,1].copy() # must make a copy so we don't sort timer
     timer_vals.sort()
     n=len(timer_vals)
@@ -45,7 +44,6 @@ def timer_table_vals(timer, interval_secs):
     splat_series = group_series(timer, interval_secs)
     timer_table=[]
     for i, bucket in splat_series:
-        #interval_start = int((i + 1) * interval_secs)
         cnt = len(bucket)
         if cnt == 0:
             row=dict(interval=i, count=0, rate=0, min='N/A', avg='N/A',pct_80='N/A',pct_90='N/A',pct_95='N/A',max='N/A',stdev='N/A')
@@ -124,7 +122,7 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
                 timer_points.extend(val)
             except (KeyError,IndexError):
                 pass
-        timer_array=np.asarray(timer_points,dtype=float)
+        timer_points=np.asarray(timer_points,dtype=float)
 
         template_vars['timers'][timer_string]={}
         template_vars['timers'][timer_string]['s'],template_vars['timers'][timer_string]['table'],graph_data=timer_table_vals(timer_points, ts_interval)
@@ -144,13 +142,10 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
                              template_vars['graph_filenames'][timer_string]['resptime_all'], 
                              results_dir)
 
-
-        # all transactions - throughput
-        throughput_points = {}  # {intervalstart: numberofrequests}
-        interval_secs = 5.0
-        splat_series = group_series(timer_points, interval_secs)
-        for i, bucket in splat_series:
-            throughput_points[i] = (float(len(bucket)) / interval_secs)
+        interval_secs=5.0
+        bins=np.arange(0,run_time+interval_secs, interval_secs)
+        hist,bins=np.histogram(timer_points[:,0],bins)
+        throughput_points=dict(zip(bins,hist/interval_secs))
         graph.tp_graph(throughput_points, template_vars['graph_filenames'][timer_string]['throughput'], results_dir)
 
 
@@ -235,6 +230,6 @@ def group_series(points, interval):
             for key,values in groupby(points,itemgetter(0))]
     return grouping
     
-    
+
 if __name__ == '__main__':
     output_results('./', 'results.csv', 120, 1, 1)
