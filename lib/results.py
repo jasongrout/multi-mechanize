@@ -9,48 +9,57 @@
 import time
 from collections import defaultdict
 import graph
+import numpy as np
+from itertools import groupby
 
-def timer_table_vals(timer_points, interval_secs):
-    timer_vals=[j for i,j in timer_points]
+def timer_table_vals(timer, interval_secs):
+    timer=np.asarray(timer, dtype=float)
+    timer_vals=timer[:,1]
+    timer_vals.sort()
+    n=len(timer_vals)
     graphs={}
-    graphs['avg_resptime'] = {}  # {intervalstart: avg_resptime}
-    graphs['pct_80_resptime'] = {}  # {intervalstart: 80pct_resptime}
-    graphs['pct_90_resptime'] = {}  # {intervalstart: 90pct_resptime}
+    graphs['pct_50_resptime'] = {}
+    graphs['pct_80_resptime'] = {}  
+    graphs['pct_90_resptime'] = {}  
 
-    summary=dict(count=len(timer_vals),
-                 min=min(timer_vals), 
-                 avg=average(timer_vals),
-                 pct_80=percentile(timer_vals, 80),
-                 pct_90=percentile(timer_vals, 90),
-                 pct_95=percentile(timer_vals, 95),
-                 max=max(timer_vals),
-                 stdev=standard_dev(timer_vals))
+    summary=dict(count=n,
+                 min=timer_vals[0],
+                 avg=np.average(timer_vals),
+                 max=timer_vals[-1],
+                 stdev=timer_vals.std(ddof=1)) #sample standard deviation
+    # not exactly percentiles, since I'm not averaging values if 
+    # the percentile doesn't fall exactly on a slot.
+    for pct in [25,50,80,90,95]:
+        summary['pct_%s'%pct]=timer_vals[int((n*pct)//100)]
 
-    splat_series = split_series(timer_points, interval_secs)
+    splat_series = group_series(timer, interval_secs)
     timer_table=[]
-    for i, bucket in enumerate(splat_series):
-        interval_start = int((i + 1) * interval_secs)
+    for i, bucket in splat_series:
+        #interval_start = int((i + 1) * interval_secs)
         cnt = len(bucket)
         if cnt == 0:
-            row=dict(interval=i+1, count=0, rate=0, min='N/A', avg='N/A',pct_80='N/A',pct_90='N/A',pct_95='N/A',max='N/A',stdev='N/A')
+            row=dict(interval=i, count=0, rate=0, min='N/A', avg='N/A',pct_80='N/A',pct_90='N/A',pct_95='N/A',max='N/A',stdev='N/A')
         else:
             row=dict()
-            row['interval'] = i+1
+            row['interval'] = i
             row['count'] = cnt
             row['rate'] = cnt / float(interval_secs)
-            row['min'] = min(bucket)
-            row['avg'] = average(bucket)
-            row['pct_80'] = percentile(bucket, 80)
-            row['pct_90'] = percentile(bucket, 90)
-            row['pct_95'] = percentile(bucket, 95)
-            row['max'] = max(bucket)
-            row['stdev'] = standard_dev(bucket)
+            row['min'] = bucket[0]
+            row['avg'] = np.average(bucket)
+            row['max'] = bucket[-1]
+            row['stdev'] = np.std(bucket, ddof=1) # sample stdev
+            # not exactly percentiles, since I'm not averaging values if 
+            # the percentile doesn't fall exactly on a slot.
+            for pct in [25,50,80,90,95]:
+                row['pct_%s'%pct]=bucket[int((cnt*pct)//100)]
+
+
         timer_table.append(row)
 
         # graph data
-        graphs['avg_resptime'][interval_start] = row['avg']
-        graphs['pct_80_resptime'][interval_start] = row['pct_80']
-        graphs['pct_90_resptime'][interval_start] = row['pct_90']
+        graphs['pct_50_resptime'][i] = row['pct_50']
+        graphs['pct_80_resptime'][i] = row['pct_80']
+        graphs['pct_90_resptime'][i] = row['pct_90']
 
     return summary, timer_table, graphs    
 
@@ -104,6 +113,7 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
                 timer_points.extend(val)
             except (KeyError,IndexError):
                 pass
+        timer_array=np.asarray(timer_points,dtype=float)
 
         template_vars['timers'][timer_string]={}
         template_vars['timers'][timer_string]['s'],template_vars['timers'][timer_string]['table'],graph_data=timer_table_vals(timer_points, ts_interval)
@@ -113,7 +123,7 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
         template_vars['graph_filenames'][timer_string]['resptime_all']=timer_string+'_response_times.png'
         template_vars['graph_filenames'][timer_string]['throughput']=timer_string+'_throughput.png'
 
-        graph.resp_graph(graph_data['avg_resptime'], 
+        graph.resp_graph(graph_data['pct_50_resptime'], 
                          graph_data['pct_80_resptime'], 
                          graph_data['pct_90_resptime'], 
                          template_vars['graph_filenames'][timer_string]['resptime'], 
@@ -127,9 +137,9 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
         # all transactions - throughput
         throughput_points = {}  # {intervalstart: numberofrequests}
         interval_secs = 5.0
-        splat_series = split_series(timer_points, interval_secs)
-        for i, bucket in enumerate(splat_series):
-            throughput_points[int((i + 1) * interval_secs)] = (len(bucket) / interval_secs)
+        splat_series = group_series(timer_points, interval_secs)
+        for i, bucket in splat_series:
+            throughput_points[i] = (float(len(bucket)) / interval_secs)
         graph.tp_graph(throughput_points, template_vars['graph_filenames'][timer_string]['throughput'], results_dir)
 
 
@@ -201,41 +211,16 @@ class ResponseStats(object):
         
 
 
-def split_series(points, interval):
-    offset = points[0][0]
-    maxval = int((points[-1][0] - offset) // interval)
-    vals = defaultdict(list)
-    for key, value in points:
-        vals[(key - offset) // interval].append(value)
-    series = [vals[i] for i in xrange(maxval + 1)]
-    return series
-
-
-
-def average(seq):
-    avg = (float(sum(seq)) / len(seq)) 
-    return avg
-
-
-
-def standard_dev(seq):
-    avg = average(seq)
-    sdsq = sum([(i - avg) ** 2 for i in seq])
-    try:
-        stdev = (sdsq / (len(seq) - 1)) ** .5
-    except ZeroDivisionError:
-        stdev = 0 
-    return stdev
-
+def group_series(points, interval):
+    """
+    Returns [key, [list of values]], where key is the maximal step
+    below each of the corresponding values.  The corresponding values will 
+    be sorted.
+    """
+    p=sorted(points,key=lambda x:x[0])
+    group_function=lambda x, offset=p[0][0]: interval*int((x[0]-offset)//interval)#+offset
+    return [(key,sorted(v for _,v in values)) 
+            for key,values in groupby(p,group_function)]
     
-    
-def percentile(seq, percentile):
-    i = int(len(seq) * (percentile / 100.0))
-    seq.sort()
-    return seq[i]
-
-
-
-
 if __name__ == '__main__':
     output_results('./', 'results.csv', 60, 30, 10)
