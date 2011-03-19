@@ -11,6 +11,16 @@ from collections import defaultdict
 import graph
 import numpy as np
 from itertools import groupby
+import csv
+from operator import itemgetter
+
+# first try to import a fast newer version of simplejson
+try:
+    import simplejson as json
+except ImportError:
+    # fall back to the old, slow library version
+    import json
+
 
 def timer_table_vals(timer, interval_secs):
     timer=np.asarray(timer, dtype=float)
@@ -40,6 +50,7 @@ def timer_table_vals(timer, interval_secs):
         if cnt == 0:
             row=dict(interval=i, count=0, rate=0, min='N/A', avg='N/A',pct_80='N/A',pct_90='N/A',pct_95='N/A',max='N/A',stdev='N/A')
         else:
+            bucket.sort()
             row=dict()
             row['interval'] = i
             row['count'] = cnt
@@ -168,8 +179,6 @@ class Results(object):
         
         
     def __parse_file(self):
-        import json
-        import csv
         f = csv.reader(open(self.results_file_name, 'rb'))
         resp_stats_list = []
         for fields in f:
@@ -214,13 +223,18 @@ class ResponseStats(object):
 def group_series(points, interval):
     """
     Returns [key, [list of values]], where key is the maximal step
-    below each of the corresponding values.  The corresponding values will 
-    be sorted.
+    below each of the corresponding values.
+
+    This function may sort points.
     """
-    p=sorted(points,key=lambda x:x[0])
-    group_function=lambda x, offset=p[0][0]: interval*int((x[0]-offset)//interval)#+offset
-    return [(key,sorted(v for _,v in values)) 
-            for key,values in groupby(p,group_function)]
+    points=np.asarray(points,dtype=float)
+    points[:,0]=interval*((points[:,0]-points[0,0])//interval)
+    # sort points by first column, then group by first column
+    points=points[points[:,0].argsort(),]
+    grouping=[(key,map(itemgetter(1), values))
+            for key,values in groupby(points,itemgetter(0))]
+    return grouping
+    
     
 if __name__ == '__main__':
     output_results('./', 'results.csv', 120, 1, 1)
