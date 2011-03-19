@@ -36,10 +36,9 @@ def timer_table_vals(timer, interval_secs):
                  avg=np.average(timer_vals),
                  max=timer_vals[-1],
                  stdev=timer_vals.std(ddof=1)) #sample standard deviation
-    # not exactly percentiles, since I'm not averaging values if 
-    # the percentile doesn't fall exactly on a slot.
-    for pct in [25,50,80,90,95]:
-        summary['pct_%s'%pct]=timer_vals[int((n*pct)//100)]
+    pct=[25,50,80,90,95]
+    for p,q in zip(pct,np.percentile(timer_vals, pct)):
+        summary['pct_%s'%p]=q
 
     splat_series = group_series(timer, interval_secs)
     timer_table=[]
@@ -59,9 +58,9 @@ def timer_table_vals(timer, interval_secs):
             row['stdev'] = np.std(bucket, ddof=1) # sample stdev
             # not exactly percentiles, since I'm not averaging values if 
             # the percentile doesn't fall exactly on a slot.
-            for pct in [25,50,80,90,95]:
-                row['pct_%s'%pct]=bucket[int((cnt*pct)//100)]
-
+            pct=[25,50,80,90,95]
+            for p,q in zip(pct,np.percentile(bucket, pct)):
+                row['pct_%s'%p]=q
 
         timer_table.append(row)
 
