@@ -149,7 +149,8 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
                          ('Throughput', throughput_points),
                          splat_series,
                          template_vars['graph_filenames'][timer_string]['resptime'], 
-                         results_dir)
+                         timer=timer_string,
+                         dir=results_dir)
 
 
 
