@@ -100,24 +100,30 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
     # Make the "Transactions" timer just another custom timer
     template_vars['timers']={}
     template_vars['graph_filenames']={}
-    results.uniq_timer_names.add('transactions')
+    results.uniq_timer_names.add('Transactions')
     for resp_stats in results.resp_stats_list:
-        resp_stats.custom_timers['transactions']=[(resp_stats.elapsed_time, resp_stats.trans_time)]
+        resp_stats.custom_timers['Transactions']=[(resp_stats.elapsed_time, resp_stats.trans_time)]
 
-        
+    start_time=results.epoch_start
     for timer_string in sorted(results.uniq_timer_names):
         timer_points = []  # [elapsed, timervalue]
         for resp_stats in results.resp_stats_list:
             try:
                 val = resp_stats.custom_timers[timer_string]
-                # the values in a custom timer can either be a single time 
-                # delta, a list of time deltas, or a list of 
-                # (elapsed time, time delta) tuples
+                # the values in a custom timer can either be:
+                # (1) a single time delta (assumed to occur at the start of the transaction)
+                # (2) a list of time deltas (all assumed to occur at the start of the transaction)
+                # (3) (exact time, time delta) tuples
                 if not isinstance(val, (list, tuple)):
+                    # case (1) 
                     val=[(resp_stats.elapsed_time, val)]
                 elif not isinstance(val[0], (list, tuple)):
+                    # case (2)
                     val=[(resp_stats.elapsed_time, v) for v in val]
-                # now val is a list of (elapsed time, time delta)
+                else:
+                    # case (3) -- need to change the exact time to a relative time
+                    val=[(t-start_time, v) for t,v in val]
+                # now val is a list of (time since start of run, time delta)
                 timer_points.extend(val)
             except (KeyError,IndexError):
                 pass
