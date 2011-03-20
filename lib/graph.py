@@ -46,6 +46,8 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
               borderpad=1,
               prop=matplotlib.font_manager.FontProperties(size='xx-small'))
 
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
 
     ax=ax2
     ax.set_title('Detail of '+timer,size='small')
@@ -71,6 +73,8 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
                 color=c, linestyle='-', linewidth=1.0, marker='o',
                 markeredgecolor=c, markerfacecolor='yellow', markersize=1.0,
                 label=label)
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
 
 
     ax=ax3
@@ -87,5 +91,7 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
         color='red', linestyle='-', linewidth=0.75, marker='o', 
         markeredgecolor='red', markerfacecolor='yellow', markersize=2.0,
              label=throughput_label)
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
 
     savefig(dir + image_name)
