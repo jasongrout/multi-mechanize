@@ -21,7 +21,9 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
     fig = figure(figsize=(8, 12))  # image dimensions
     fig.suptitle('Timer: '+timer)
     ax1 = fig.add_subplot(311)
-    ax2=fig.add_subplot(312,sharex=ax1)
+    # we don't share this axis because the boxplot makes a horrible axis
+    # TODO: we should just change that axis
+    ax2=fig.add_subplot(312)#,sharex=ax1)
     ax3=fig.add_subplot(313,sharex=ax1)
 
     ax=ax1
@@ -56,10 +58,12 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
     ax.grid(True, color='#666666')
     ax.tick_params(labelsize='x-small')
 
+    # Draw the actual timer values behind everything and almost transparent, 
+    # just as a backdrop
     xseq,yseq=zip(*points[1])
-    ax.plot(xseq,yseq, alpha=.3,
+    ax.plot(xseq,yseq, alpha=.2,
         color='gray', linestyle='-', linewidth=0.0, marker='o', 
-        markeredgecolor='gray', markerfacecolor='gray', markersize=2.0)
+        markeredgecolor='gray', markerfacecolor='gray', markersize=2.0,zorder=-1)
 
     pos, boxes=zip(*boxplots)
     ax.boxplot(boxes, positions=pos)
