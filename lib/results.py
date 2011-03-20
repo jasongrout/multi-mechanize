@@ -184,7 +184,7 @@ class Results(object):
         for fields in f:
             request_num = int(fields[0])
             elapsed_time = float(fields[1])
-            epoch_secs = fields[2]
+            epoch_secs = float(fields[2])
             user_group_name = fields[3]
             trans_time = float(fields[4])
             error = fields[5]
