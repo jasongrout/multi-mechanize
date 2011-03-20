@@ -54,6 +54,11 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
     ax.grid(True, color='#666666')
     ax.tick_params(labelsize='x-small')
 
+    xseq,yseq=zip(*points[1])
+    ax.plot(xseq,yseq, alpha=.3,
+        color='gray', linestyle='-', linewidth=0.0, marker='o', 
+        markeredgecolor='gray', markerfacecolor='gray', markersize=2.0)
+
     pos, boxes=zip(*boxplots)
     ax.boxplot(boxes, positions=pos)
 
