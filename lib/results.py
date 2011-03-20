@@ -102,7 +102,7 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
     template_vars['graph_filenames']={}
     results.uniq_timer_names.add('Transactions')
     for resp_stats in results.resp_stats_list:
-        resp_stats.custom_timers['Transactions']=[(resp_stats.elapsed_time, resp_stats.trans_time)]
+        resp_stats.custom_timers['Transactions']=resp_stats.trans_time
 
     start_time=results.epoch_start
     for timer_string in sorted(results.uniq_timer_names):
