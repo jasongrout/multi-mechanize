@@ -237,4 +237,4 @@ def group_series(points, interval):
     
 
 if __name__ == '__main__':
-    output_results('./', 'results.csv', 120, 1, 1)
+    output_results('./', 'results.csv', 120, 1, 5)
