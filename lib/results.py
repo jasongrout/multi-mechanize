@@ -130,7 +130,7 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
         timer_points=np.asarray(timer_points,dtype=float)
 
         template_vars['timers'][timer_string]={}
-        template_vars['timers'][timer_string]['s'],template_vars['timers'][timer_string]['table'],graph_data, splat_series=timer_table_vals(timer_points, ts_interval)
+        template_vars['timers'][timer_string]['s'],template_vars['timers'][timer_string]['table'],graph_data, splat_series=timer_table_vals(timer_points.copy(), ts_interval)
 
         template_vars['graph_filenames'][timer_string]={}
         template_vars['graph_filenames'][timer_string]['resptime']=timer_string+'_response_times_intervals.png'
