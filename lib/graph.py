@@ -23,7 +23,7 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
     ax1 = fig.add_subplot(311)
     # we don't share this axis because the boxplot makes a horrible axis
     # TODO: we should just change that axis
-    ax2=fig.add_subplot(312)#,sharex=ax1)
+    ax2=fig.add_subplot(312,sharex=ax1)
     ax3=fig.add_subplot(313,sharex=ax1)
 
     ax=ax1
@@ -97,5 +97,11 @@ def resp_graph(lines, points, line_below, boxplots, image_name, timer, dir='./')
              label=throughput_label)
     ax.set_xlim(left=0)
     ax.set_ylim(bottom=0)
+    
+    # We need to explicitly set the locator in order to override
+    # the tick positions from the boxplot
+    from matplotlib.ticker import AutoLocator
+    ax1.xaxis.set_major_locator(AutoLocator())
+    ax1.xaxis.set_minor_locator(AutoLocator())
 
     savefig(dir + image_name)
