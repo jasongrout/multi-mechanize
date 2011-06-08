@@ -71,7 +71,7 @@ def timer_table_vals(timer, interval_secs):
 
     return summary, timer_table, graphs, splat_series   
 
-def output_results(results_dir, results_file, run_time, rampup, ts_interval, user_group_configs=[]):
+def output_results(results_dir, results_file, run_time, rampup, ts_interval, user_group_configs=[], project_config_data=''):
     from jinja2 import Template
     from jinja2 import Environment, FileSystemLoader
     # change this to PackageLoader when we get an installable package
@@ -96,7 +96,8 @@ def output_results(results_dir, results_file, run_time, rampup, ts_interval, use
     template_vars['test_finish']=results.finish_datetime
     template_vars['timeseries_interval']=ts_interval
     template_vars['user_group_configs']=user_group_configs
-    
+    template_vars['project_config_data']=project_config_data
+
     # Make the "Transactions" timer just another custom timer
     template_vars['timers']={}
     template_vars['graph_filenames']={}

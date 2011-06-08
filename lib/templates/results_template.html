@@ -71,6 +71,7 @@
   
   
   
+<table><tr><td valign='top'>
   <b>transactions:</b> {{total_transactions}}<br />
   <b>errors:</b> {{total_errors}}<br />
   <b>run time:</b> {{run_time}} secs<br />
@@ -78,16 +79,22 @@
   <b>test start:</b> {{test_start}}<br />
   <b>test finish:</b> {{test_finish}}<br /><br />
   <b>time-series interval:</b> {{timeseries_interval}} secs<br /><br /><br />
-  
+  </td><td valign='top'>
+  {% if project_config_data|length > 0 %}
+  <b>project configuration:</b></br /><br />
+  <pre>{{project_config_data}}</pre>
+  {% endif %}
+</td><td valign='top'>
   {% if user_group_configs|length > 0 %}
   <b>workload configuration:</b><br /><br />
   <table>
     <tr><th>group name</th><th>threads</th><th>script name</th></tr>
-    {% for u in user_group_configs %}:
+    {% for u in user_group_configs %}
     <tr><td>{{u.name}}</td><td>{{u.num_threads}}</td><td>{{u.script_file}}</td></tr>
     {% endfor %}
   </table>
   {% endif %}
+  </td></tr></table>
   
 </div>
 

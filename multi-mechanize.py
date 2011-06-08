@@ -62,11 +62,23 @@ def run_test(remote_starter=None):
         remote_starter.test_running = True
         remote_starter.output_dir = None
         
-    run_time, rampup, console_logging, results_ts_interval, user_group_configs, results_database, post_run_script = configure(project_name)
+    (run_time, rampup, console_logging, results_ts_interval, 
+     user_group_configs, results_database, post_run_script, 
+     project_config_script) = configure(project_name)
     
     run_localtime = time.localtime() 
     output_dir = time.strftime('projects/' + project_name + '/results/results_%Y.%m.%d_%H.%M.%S/', run_localtime) 
+    
+    # get project configuration
+    if project_config_script is not None:
+        print 'running project_config_script: %s\n' % project_config_script
+        # in python 2.7, we can just use the check_output command instead of Popen
+        process = subprocess.Popen([project_config_script], shell=True, stdout=subprocess.PIPE)
+        project_config_data = process.communicate()[0]
+    else:
+        project_config_data=''
         
+    
     # this queue is shared between all processes/threads
     queue = multiprocessing.Queue()
     rw = ResultsWriter(queue, output_dir, console_logging)
@@ -116,7 +128,7 @@ def run_test(remote_starter=None):
     # all agents are done running at this point
     time.sleep(.2) # make sure the writer queue is flushed
     print '\n\nanalyzing results...\n'
-    results.output_results(output_dir, 'results.csv', run_time, rampup, results_ts_interval, user_group_configs)
+    results.output_results(output_dir, 'results.csv', run_time, rampup, results_ts_interval, user_group_configs, project_config_data)
     print 'created: %sresults.html\n' % output_dir
     
     # copy config file to results directory
@@ -162,6 +174,10 @@ def configure(project_name):
                 post_run_script = config.get(section, 'post_run_script')
             except ConfigParser.NoOptionError:
                 post_run_script = None
+            try:
+                project_config_script = config.get(section, 'project_config_script')
+            except ConfigParser.NoOptionError:
+                project_config_script = None
         else:
             threads = config.getint(section, 'threads')
             script = config.get(section, 'script')
@@ -169,7 +185,7 @@ def configure(project_name):
             ug_config = UserGroupConfig(threads, user_group_name, script)
             user_group_configs.append(ug_config)
 
-    return (run_time, rampup, console_logging, results_ts_interval, user_group_configs, results_database, post_run_script)
+    return (run_time, rampup, console_logging, results_ts_interval, user_group_configs, results_database, post_run_script, project_config_script)
     
 
 
