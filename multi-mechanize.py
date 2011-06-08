@@ -78,10 +78,6 @@ def run_test(remote_starter=None):
     else:
         project_config_data=''
 
-    with open(os.sep.join([output_dir, 'project_config_data.txt']),'w') as f:
-        f.write(project_config_data)
-
-    
     # this queue is shared between all processes/threads
     queue = multiprocessing.Queue()
     rw = ResultsWriter(queue, output_dir, console_logging)
@@ -139,6 +135,10 @@ def run_test(remote_starter=None):
     saved_config = os.sep.join([output_dir, 'config.cfg'])
     shutil.copy(project_config, saved_config)
     
+    with open(os.path.join(output_dir, 'project_config_data.txt'),'w') as f:
+        f.write(project_config_data)
+
+
     if results_database is not None:
         print 'loading results into database: %s\n' % results_database
         import lib.resultsloader
