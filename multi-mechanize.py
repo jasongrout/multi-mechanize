@@ -77,7 +77,10 @@ def run_test(remote_starter=None):
         project_config_data = process.communicate()[0]
     else:
         project_config_data=''
-        
+
+    with open(os.sep.join([output_dir, 'project_config_data.txt']),'w') as f:
+        f.write(project_config_data)
+
     
     # this queue is shared between all processes/threads
     queue = multiprocessing.Queue()
