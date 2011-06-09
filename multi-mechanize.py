@@ -187,7 +187,10 @@ def configure(project_name):
         else:
             threads = config.getint(section, 'threads')
             script = config.get(section, 'script')
-            script_options = config.get(section, 'script_options')
+            try:
+                script_options = config.get(section, 'script_options')
+            except ConfigParser.NoOptionError:
+                script_options = ''
             user_group_name = section
             ug_config = UserGroupConfig(threads, user_group_name, script, script_options)
             user_group_configs.append(ug_config)
