@@ -88,9 +88,9 @@
   {% if user_group_configs|length > 0 %}
   <b>workload configuration:</b><br /><br />
   <table>
-    <tr><th>group name</th><th>threads</th><th>script name</th></tr>
+    <tr><th>group name</th><th>threads</th><th>script name</th><th>script options</th></tr>
     {% for u in user_group_configs %}
-    <tr><td>{{u.name}}</td><td>{{u.num_threads}}</td><td>{{u.script_file}}</td></tr>
+    <tr><td>{{u.name}}</td><td>{{u.num_threads}}</td><td>{{u.script_file}}</td><td>{{u.script_options}}</td></tr>
     {% endfor %}
   </table>
   {% endif %}

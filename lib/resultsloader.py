@@ -55,11 +55,13 @@ class UserGroupConfig(Base):
     user_group = Column(String(50), nullable=False)
     threads = Column(Integer, nullable=False)
     script = Column(String(50), nullable=False)
+    script_options = Column(String(50), nullable=False)
 
-    def __init__(self, user_group=None, threads=None, script=None):
+    def __init__(self, user_group=None, threads=None, script=None, script_options=None):
         self.user_group = str(user_group)
         self.threads = int(threads)
         self.script = str(script)
+        self.script_options = str(script_options)
 
     def __repr__(self):
         return "<UserGroupConfig('%s','%s','%s')>" % (
@@ -156,7 +158,7 @@ def load_results_database(project_name, run_localtime, results_dir,
     
     for i, ug_config in enumerate(user_group_configs):
         user_group_config = UserGroupConfig(ug_config.name, 
-                ug_config.num_threads, ug_config.script_file)
+                ug_config.num_threads, ug_config.script_file, ug_config.script_options)
         global_config.user_group_configs.append(user_group_config)
 
     for line in fileinput.input([results_file]):

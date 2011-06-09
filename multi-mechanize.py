@@ -86,7 +86,10 @@ def run_test(remote_starter=None):
     
     user_groups = [] 
     for i, ug_config in enumerate(user_group_configs):
-        ug = UserGroup(queue, i, ug_config.name, ug_config.num_threads, ug_config.script_file, run_time, rampup)
+        ug = UserGroup(queue, i, ug_config.name, ug_config.num_threads, 
+                       ug_config.script_file, ug_config.script_options, 
+                       run_time, rampup)
+
         user_groups.append(ug)    
     for user_group in user_groups:
         user_group.start()
@@ -161,7 +164,7 @@ def run_test(remote_starter=None):
     
 def configure(project_name):
     user_group_configs = []
-    config = ConfigParser.ConfigParser()
+    config = ConfigParser.SafeConfigParser()
     config.read( 'projects/%s/config.cfg' % project_name)
     for section in config.sections():
         if section == 'global':
@@ -184,8 +187,9 @@ def configure(project_name):
         else:
             threads = config.getint(section, 'threads')
             script = config.get(section, 'script')
+            script_options = config.get(section, 'script_options')
             user_group_name = section
-            ug_config = UserGroupConfig(threads, user_group_name, script)
+            ug_config = UserGroupConfig(threads, user_group_name, script, script_options)
             user_group_configs.append(ug_config)
 
     return (run_time, rampup, console_logging, results_ts_interval, user_group_configs, results_database, post_run_script, project_config_script)
@@ -193,21 +197,22 @@ def configure(project_name):
 
 
 class UserGroupConfig(object):
-    def __init__(self, num_threads, name, script_file):
+    def __init__(self, num_threads, name, script_file, script_options):
         self.num_threads = num_threads
         self.name = name
         self.script_file = script_file
-    
-    
+        self.script_options = script_options
+
     
 class UserGroup(multiprocessing.Process):
-    def __init__(self, queue, process_num, user_group_name, num_threads, script_file, run_time, rampup):
+    def __init__(self, queue, process_num, user_group_name, num_threads, script_file, script_options, run_time, rampup):
         multiprocessing.Process.__init__(self)
         self.queue = queue
         self.process_num = process_num
         self.user_group_name = user_group_name
         self.num_threads = num_threads
         self.script_file = script_file
+        self.script_options = script_options
         self.run_time = run_time
         self.rampup = rampup
         self.start_time = time.time()
@@ -218,7 +223,8 @@ class UserGroup(multiprocessing.Process):
             spacing = float(self.rampup) / float(self.num_threads)
             if i > 0:
                 time.sleep(spacing)
-            agent_thread = Agent(self.queue, self.process_num, i, self.start_time, self.run_time, self.user_group_name, self.script_file)
+            agent_thread = Agent(self.queue, self.process_num, i, self.start_time, self.run_time, self.user_group_name, 
+                                 self.script_file, self.script_options)
             agent_thread.daemon = True
             threads.append(agent_thread)
             agent_thread.start()            
@@ -228,7 +234,7 @@ class UserGroup(multiprocessing.Process):
 
 
 class Agent(threading.Thread):
-    def __init__(self, queue, process_num, thread_num, start_time, run_time, user_group_name, script_file):
+    def __init__(self, queue, process_num, thread_num, start_time, run_time, user_group_name, script_file, script_options):
         threading.Thread.__init__(self)
         self.queue = queue
         self.process_num = process_num
@@ -237,6 +243,7 @@ class Agent(threading.Thread):
         self.run_time = run_time
         self.user_group_name = user_group_name
         self.script_file = script_file
+        self.script_options = script_options
         
         # choose most accurate timer to use (time.clock has finer granularity than time.time on windows, but shouldn't be used on other systems)
         if sys.platform.startswith('win'):
@@ -254,7 +261,8 @@ class Agent(threading.Thread):
             sys.stderr.write('ERROR: scripts must have .py extension. can not run test script: %s.  aborting user group: %s\n' % (self.script_file, self.user_group_name))
             return
         try:
-            trans = eval(module_name + '.Transaction()')
+            cmd=module_name + '.Transaction('+self.script_options+')'
+            trans = eval(cmd)
         except NameError, e:
             sys.stderr.write('ERROR: can not find test script: %s.  aborting user group: %s\n' % (self.script_file, self.user_group_name))
             return
